@@ -5,17 +5,15 @@ import { useLocation } from "react-router-dom";
 const SOCKET_SERVER_URL = "http://localhost:3000";
 
 const RoomPage = () => {
-  const [socket, setSocket] = useState(null);
   const [connected, setConnected] = useState(false);
   const location = useLocation();
 
-  // Get roomId from query params
   const searchParams = new URLSearchParams(location.search);
   const roomId = searchParams.get("roomId");
+  const name = searchParams.get("name");
 
   useEffect(() => {
     const newSocket = io(SOCKET_SERVER_URL);
-    setSocket(newSocket);
 
     newSocket.on("connect", () => {
       setConnected(true);
@@ -33,7 +31,7 @@ const RoomPage = () => {
     };
   }, [roomId]);
 
-  return <div>RoomPage<br/>Socket status: {connected ? "Connected" : "Disconnected"}<br/>Room ID: {roomId || "(none)"}</div>;
+  return <div>RoomPage<br/>Socket status: {connected ? "Connected" : "Disconnected"}<br/>Room ID: {roomId || "(none)"}<br/>Name: {name || "(none)"}</div>;
 };
 
 export default RoomPage;
