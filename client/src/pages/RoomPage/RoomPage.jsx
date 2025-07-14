@@ -52,6 +52,7 @@ const RoomPage = () => {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [participantNames, setParticipantNames] = useState({});
   const location = useLocation();
   const history = useHistory();
   const localVideoRef = useRef(null);
@@ -72,6 +73,11 @@ const RoomPage = () => {
       delete copy[peerId];
       return copy;
     });
+    setParticipantNames((prev) => {
+      const copy = { ...prev };
+      delete copy[peerId];
+      return copy;
+    });
   };
 
   useEffect(() => {
@@ -80,14 +86,34 @@ const RoomPage = () => {
 
     socket.on("connect", () => {
       if (roomId) {
-        socket.emit("join-room", roomId);
+        socket.emit("join-room", { roomId, name });
       }
     });
 
     socket.on("disconnect", () => {
     });
 
-    socket.on("user-joined", async (peerId) => {
+    socket.on("user-joined", ({ peerId, name: remoteName }) => {
+      setParticipantNames((prev) => ({ ...prev, [peerId]: remoteName }));
+    });
+
+    socket.on("participants", (participants) => {
+      const names = {};
+      participants.forEach(({ peerId, name }) => {
+        names[peerId] = name;
+      });
+      setParticipantNames(names);
+    });
+
+    socket.on("user-left", (peerId) => {
+      if (peersRef.current[peerId]) {
+        peersRef.current[peerId].close();
+        delete peersRef.current[peerId];
+      }
+      removeRemoteStream(peerId);
+    });
+
+    socket.on("user-joined", async ({ peerId }) => {
       if (!localStreamRef.current) return;
       const peerConnection = new RTCPeerConnection(ICE_SERVERS);
       peersRef.current[peerId] = peerConnection;
@@ -141,14 +167,6 @@ const RoomPage = () => {
       }
     });
 
-    socket.on("user-left", (peerId) => {
-      if (peersRef.current[peerId]) {
-        peersRef.current[peerId].close();
-        delete peersRef.current[peerId];
-      }
-      removeRemoteStream(peerId);
-    });
-
     socket.on("chat-message", ({ message, name: senderName, from }) => {
       setMessages((prev) => [...prev, { message, senderName, from, self: false }]);
     });
@@ -158,8 +176,9 @@ const RoomPage = () => {
       Object.values(peersRef.current).forEach((pc) => pc.close());
       peersRef.current = {};
       setRemoteStreams({});
+      setParticipantNames({});
     };
-  }, [roomId]);
+  }, [roomId, name]);
 
   useEffect(() => {
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
@@ -258,7 +277,7 @@ const RoomPage = () => {
               ref={el => { if (el) el.srcObject = stream; }}
               style={videoStyle}
             />
-            <div style={{ textAlign: 'center', fontWeight: 500 }}>Remote: {peerId}</div>
+            <div style={{ textAlign: 'center', fontWeight: 500 }}>{participantNames[peerId] || 'Remote'}</div>
           </div>
         ))}
       </div>
