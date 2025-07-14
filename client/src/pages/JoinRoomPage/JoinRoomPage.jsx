@@ -3,10 +3,11 @@ import { useLocation } from "react-router-dom";
 import "./JoinRoomPage.css";
 import { setIsRoomHost } from "../../store/actions";
 import { connect } from "react-redux";
+import JoinRoomTitle from "./JoinRoomTitle";
 
 const JoinRoomPage = (props) => {
   const search = useLocation().search;
-  const { setIsRoomHostActions } = props;
+  const { setIsRoomHostActions, isRoomHost } = props;
 
   useEffect(() => {
     const isRoomHost = new URLSearchParams(search).get("host");
@@ -17,7 +18,9 @@ const JoinRoomPage = (props) => {
 
   return (
     <div className="join_room_page_container">
-      <div className="join_room_page_panel"></div>
+      <div className="join_room_page_panel">
+        <JoinRoomTitle isRoomHost={isRoomHost} />
+      </div>
     </div>
   );
 };
