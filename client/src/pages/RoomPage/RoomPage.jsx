@@ -1,18 +1,35 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
-import { useLocation } from "react-router-dom";
+import { useLocation, useHistory } from "react-router-dom";
 
 const SOCKET_SERVER_URL = "http://localhost:3000";
 const ICE_SERVERS = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
 
+const videoStyle = {
+  width: 320,
+  height: 240,
+  background: '#000',
+  borderRadius: 8,
+  margin: 8,
+};
+
+const gridStyle = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 16,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginTop: 16,
+};
+
 const RoomPage = () => {
-  const [connected, setConnected] = useState(false);
   const [mediaError, setMediaError] = useState("");
-  const [remoteStreams, setRemoteStreams] = useState({}); 
+  const [remoteStreams, setRemoteStreams] = useState({});
   const location = useLocation();
+  const history = useHistory();
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
-  const peersRef = useRef({}); 
+  const peersRef = useRef({});
   const socketRef = useRef(null);
 
   const searchParams = new URLSearchParams(location.search);
@@ -35,14 +52,12 @@ const RoomPage = () => {
     socketRef.current = socket;
 
     socket.on("connect", () => {
-      setConnected(true);
       if (roomId) {
         socket.emit("join-room", roomId);
       }
     });
 
     socket.on("disconnect", () => {
-      setConnected(false);
     });
 
     socket.on("user-joined", async (peerId) => {
@@ -128,27 +143,36 @@ const RoomPage = () => {
       });
   }, []);
 
+  const handleLeaveRoom = () => {
+    history.push("/");
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+
   return (
     <div>
-      <div>RoomPage</div>
-      <div>Socket status: {connected ? "Connected" : "Disconnected"}</div>
-      <div>Room ID: {roomId || "(none)"}</div>
-      <div>Name: {name || "(none)"}</div>
-      {mediaError && <div style={{ color: 'red' }}>{mediaError}</div>}
-      <div>
-        <video ref={localVideoRef} autoPlay playsInline muted style={{ width: 320, height: 240, background: '#000' }} />
-        <div>Local Video</div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div>
+          <strong>Room ID:</strong> {roomId || "(none)"} &nbsp;|&nbsp; <strong>Name:</strong> {name || "(none)"}
+        </div>
+        <button onClick={handleLeaveRoom} style={{ padding: '8px 16px', borderRadius: 6, background: '#fc5d5b', color: 'white', border: 'none', fontWeight: 600 }}>Leave Room</button>
       </div>
-      <div>
+      {mediaError && <div style={{ color: 'red' }}>{mediaError}</div>}
+      <div style={gridStyle}>
+        <div>
+          <video ref={localVideoRef} autoPlay playsInline muted style={videoStyle} />
+          <div style={{ textAlign: 'center', fontWeight: 500 }}>{name || 'You'} (You)</div>
+        </div>
         {Object.entries(remoteStreams).map(([peerId, stream]) => (
           <div key={peerId}>
             <video
               autoPlay
               playsInline
               ref={el => { if (el) el.srcObject = stream; }}
-              style={{ width: 320, height: 240, background: '#000' }}
+              style={videoStyle}
             />
-            <div>Remote: {peerId}</div>
+            <div style={{ textAlign: 'center', fontWeight: 500 }}>Remote: {peerId}</div>
           </div>
         ))}
       </div>
