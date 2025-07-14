@@ -25,6 +25,8 @@ const gridStyle = {
 const RoomPage = () => {
   const [mediaError, setMediaError] = useState("");
   const [remoteStreams, setRemoteStreams] = useState({});
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [videoEnabled, setVideoEnabled] = useState(true);
   const location = useLocation();
   const history = useHistory();
   const localVideoRef = useRef(null);
@@ -150,6 +152,24 @@ const RoomPage = () => {
     }, 100);
   };
 
+  const toggleAudio = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !audioEnabled;
+      });
+      setAudioEnabled(!audioEnabled);
+    }
+  };
+
+  const toggleVideo = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach(track => {
+        track.enabled = !videoEnabled;
+      });
+      setVideoEnabled(!videoEnabled);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -157,6 +177,14 @@ const RoomPage = () => {
           <strong>Room ID:</strong> {roomId || "(none)"} &nbsp;|&nbsp; <strong>Name:</strong> {name || "(none)"}
         </div>
         <button onClick={handleLeaveRoom} style={{ padding: '8px 16px', borderRadius: 6, background: '#fc5d5b', color: 'white', border: 'none', fontWeight: 600 }}>Leave Room</button>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 16 }}>
+        <button onClick={toggleAudio} style={{ padding: '8px 16px', borderRadius: 6, background: audioEnabled ? '#0052c9' : '#9ca5ab', color: 'white', border: 'none', fontWeight: 600 }}>
+          {audioEnabled ? 'Mute Audio' : 'Unmute Audio'}
+        </button>
+        <button onClick={toggleVideo} style={{ padding: '8px 16px', borderRadius: 6, background: videoEnabled ? '#0052c9' : '#9ca5ab', color: 'white', border: 'none', fontWeight: 600 }}>
+          {videoEnabled ? 'Turn Off Video' : 'Turn On Video'}
+        </button>
       </div>
       {mediaError && <div style={{ color: 'red' }}>{mediaError}</div>}
       <div style={gridStyle}>
