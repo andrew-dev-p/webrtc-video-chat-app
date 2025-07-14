@@ -22,11 +22,36 @@ const gridStyle = {
   marginTop: 16,
 };
 
+const chatContainerStyle = {
+  width: 400,
+  maxWidth: '90vw',
+  margin: '24px auto',
+  background: '#fff',
+  borderRadius: 8,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+  padding: 16,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+};
+
+const messageListStyle = {
+  minHeight: 120,
+  maxHeight: 200,
+  overflowY: 'auto',
+  marginBottom: 8,
+  padding: 4,
+  background: '#f6f9fb',
+  borderRadius: 4,
+};
+
 const RoomPage = () => {
   const [mediaError, setMediaError] = useState("");
   const [remoteStreams, setRemoteStreams] = useState({});
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [videoEnabled, setVideoEnabled] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
   const location = useLocation();
   const history = useHistory();
   const localVideoRef = useRef(null);
@@ -124,6 +149,10 @@ const RoomPage = () => {
       removeRemoteStream(peerId);
     });
 
+    socket.on("chat-message", ({ message, name: senderName, from }) => {
+      setMessages((prev) => [...prev, { message, senderName, from, self: false }]);
+    });
+
     return () => {
       socket.disconnect();
       Object.values(peersRef.current).forEach((pc) => pc.close());
@@ -170,6 +199,14 @@ const RoomPage = () => {
     }
   };
 
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !socketRef.current) return;
+    setMessages((prev) => [...prev, { message: chatInput, senderName: name, from: 'self', self: true }]);
+    socketRef.current.emit("chat-message", { roomId, message: chatInput, name });
+    setChatInput("");
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
@@ -185,6 +222,27 @@ const RoomPage = () => {
         <button onClick={toggleVideo} style={{ padding: '8px 16px', borderRadius: 6, background: videoEnabled ? '#0052c9' : '#9ca5ab', color: 'white', border: 'none', fontWeight: 600 }}>
           {videoEnabled ? 'Turn Off Video' : 'Turn On Video'}
         </button>
+      </div>
+      <div style={chatContainerStyle}>
+        <div style={messageListStyle}>
+          {messages.length === 0 && <div style={{ color: '#aaa', textAlign: 'center' }}>No messages yet</div>}
+          {messages.map((msg, idx) => (
+            <div key={idx} style={{ margin: '4px 0', textAlign: msg.self ? 'right' : 'left' }}>
+              <span style={{ fontWeight: 600, color: msg.self ? '#0052c9' : '#333' }}>{msg.self ? 'You' : (msg.senderName || 'Peer')}</span>: {msg.message}
+            </div>
+          ))}
+        </div>
+        <form onSubmit={handleSendMessage} style={{ display: 'flex', gap: 8 }}>
+          <input
+            type="text"
+            value={chatInput}
+            onChange={e => setChatInput(e.target.value)}
+            placeholder="Type a message..."
+            style={{ flex: 1, padding: 8, borderRadius: 4, border: '1px solid #ccc' }}
+            maxLength={300}
+          />
+          <button type="submit" style={{ padding: '8px 16px', borderRadius: 4, background: '#0052c9', color: 'white', border: 'none', fontWeight: 600 }}>Send</button>
+        </form>
       </div>
       {mediaError && <div style={{ color: 'red' }}>{mediaError}</div>}
       <div style={gridStyle}>
