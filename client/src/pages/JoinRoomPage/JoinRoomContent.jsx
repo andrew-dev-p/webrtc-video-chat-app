@@ -3,6 +3,7 @@ import JoinRoomInputs from "./JoinRoomInputs";
 import { connect } from "react-redux";
 import OnlyWithAudioCheckbox from "./OnlyWithAudioCheckbox";
 import { setConnectOnlyWithAudio } from "../../store/actions";
+import JoinRoomButtons from "./JoinRoomButtonts";
 
 const JoinRoomContent = (props) => {
   const { isRoomHost, setConnectOnlyWithAudio, connectOnlyWithAudio } = props;
@@ -23,6 +24,7 @@ const JoinRoomContent = (props) => {
         setConnectOnlyWithAudio={setConnectOnlyWithAudio}
         connectOnlyWithAudio={connectOnlyWithAudio}
       />
+      <JoinRoomButtons handleJoinRoom={() => {}} isRoomHost={isRoomHost} />
     </>
   );
 };
