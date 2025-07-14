@@ -53,10 +53,12 @@ const RoomPage = () => {
   const [messages, setMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [participantNames, setParticipantNames] = useState({});
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const location = useLocation();
   const history = useHistory();
   const localVideoRef = useRef(null);
   const localStreamRef = useRef(null);
+  const cameraStreamRef = useRef(null);
   const peersRef = useRef({});
   const socketRef = useRef(null);
 
@@ -184,6 +186,7 @@ const RoomPage = () => {
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => {
         localStreamRef.current = stream;
+        cameraStreamRef.current = stream;
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -226,13 +229,64 @@ const RoomPage = () => {
     setChatInput("");
   };
 
+  const handleScreenShare = async () => {
+    if (!isScreenSharing) {
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+        localStreamRef.current.getVideoTracks().forEach((track) => {
+          track.enabled = false;
+        });
+        Object.values(peersRef.current).forEach((pc) => {
+          const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+          if (sender) sender.replaceTrack(screenTrack);
+        });
+        setIsScreenSharing(true);
+        screenTrack.onended = () => {
+          stopScreenShare();
+        };
+        localStreamRef.current = new MediaStream([
+          screenTrack,
+          ...cameraStreamRef.current.getAudioTracks()
+        ]);
+      } catch (err) {
+        setMediaError("Could not start screen sharing: " + err.message);
+      }
+    } else {
+      stopScreenShare();
+    }
+  };
+
+  const stopScreenShare = () => {
+    if (cameraStreamRef.current) {
+      const cameraTrack = cameraStreamRef.current.getVideoTracks()[0];
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = cameraStreamRef.current;
+      }
+      Object.values(peersRef.current).forEach((pc) => {
+        const sender = pc.getSenders().find((s) => s.track && s.track.kind === 'video');
+        if (sender) sender.replaceTrack(cameraTrack);
+      });
+      setIsScreenSharing(false);
+      localStreamRef.current = cameraStreamRef.current;
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
           <strong>Room ID:</strong> {roomId || "(none)"} &nbsp;|&nbsp; <strong>Name:</strong> {name || "(none)"}
         </div>
-        <button onClick={handleLeaveRoom} style={{ padding: '8px 16px', borderRadius: 6, background: '#fc5d5b', color: 'white', border: 'none', fontWeight: 600 }}>Leave Room</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={handleLeaveRoom} style={{ padding: '8px 16px', borderRadius: 6, background: '#fc5d5b', color: 'white', border: 'none', fontWeight: 600 }}>Leave Room</button>
+          <button onClick={handleScreenShare} style={{ padding: '8px 16px', borderRadius: 6, background: isScreenSharing ? '#9ca5ab' : '#0052c9', color: 'white', border: 'none', fontWeight: 600 }}>
+            {isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
+          </button>
+        </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginBottom: 16 }}>
         <button onClick={toggleAudio} style={{ padding: '8px 16px', borderRadius: 6, background: audioEnabled ? '#0052c9' : '#9ca5ab', color: 'white', border: 'none', fontWeight: 600 }}>
